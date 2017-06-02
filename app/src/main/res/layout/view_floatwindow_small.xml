@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/small_window_layout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="50dp"
+        android:background="@mipmap/ic_float_window_bg"
+        />
+
+    <Button
+        android:id="@+id/lock_screen_btn"
+        android:layout_width="80dp"
+        android:layout_height="50dp"
+        android:gravity="center"
+        android:text="lock"
+        android:background="@color/transparent"
+        android:paddingTop="13dp"
+        android:textColor="@color/black" />
+
+
+</RelativeLayout>
