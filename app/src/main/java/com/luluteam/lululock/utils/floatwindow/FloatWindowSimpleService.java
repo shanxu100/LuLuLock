@@ -37,6 +37,41 @@ public class FloatWindowSimpleService extends Service {
      * 记录系统状态栏的高度
      */
     private int statusBarHeight;
+    /**
+     * 记录当前手指位置在屏幕上的横坐标值
+     */
+    private float xInScreen;
+
+    /**
+     * 记录当前手指位置在屏幕上的纵坐标值
+     */
+    private float yInScreen;
+
+    /**
+     * 记录手指按下时在屏幕上的横坐标的值
+     */
+    private float xDownInScreen;
+
+    /**
+     * 记录手指按下时在屏幕上的纵坐标的值
+     */
+    private float yDownInScreen;
+
+    /**
+     * 记录手指按下时在小悬浮窗的View上的横坐标的值
+     */
+    private float xInView;
+
+    /**
+     * 记录手指按下时在小悬浮窗的View上的纵坐标的值
+     */
+    private float yInView;
+
+    /**
+     * 误差
+     */
+    private float error = 10;
+
 
     private enum flagType {Locked, UnLocked}
 
@@ -97,20 +132,41 @@ public class FloatWindowSimpleService extends Service {
         lock_btn = (Button) simple_rl_view.findViewById(R.id.lock_screen_btn);
         windowManager.addView(simple_rl_view, params);
 
-        lock_btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                doClick();
-            }
-        });
 
         lock_btn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                params.x = (int) (motionEvent.getRawX() - lock_btn.getMeasuredWidth() / 2);
-                params.y = (int) (motionEvent.getRawY() - lock_btn.getMeasuredHeight() / 2 - getStatusBarHeight());
-                windowManager.updateViewLayout(simple_rl_view, params);
-                return false;
+
+                int action = motionEvent.getAction();
+
+                if (action == MotionEvent.ACTION_DOWN) {
+
+                    // 手指按下时记录必要数据,纵坐标的值都需要减去状态栏高度
+                    xInView = motionEvent.getX();
+                    yInView = motionEvent.getY();
+                    xDownInScreen = motionEvent.getRawX();
+                    yDownInScreen = motionEvent.getRawY() - getStatusBarHeight();
+                    xInScreen = motionEvent.getRawX();
+                    yInScreen = motionEvent.getRawY() - getStatusBarHeight();
+
+                } else if (action == MotionEvent.ACTION_MOVE) {
+                    xInScreen = motionEvent.getRawX();
+                    yInScreen = motionEvent.getRawY() - getStatusBarHeight();
+                    // 手指移动的时候更新小悬浮窗的位置
+                    params.x = (int) (xInScreen - xInView);
+                    params.y = (int) (yInScreen - yInView);
+                    windowManager.updateViewLayout(simple_rl_view, params);
+
+                } else if (action == MotionEvent.ACTION_UP) {
+                    // 如果手指离开屏幕时，xDownInScreen和xInScreen相等(或在误差允许范围内)，
+                    // 且yDownInScreen和yInScreen相等(或在误差允许范围内)，则视为触发了单击事件。
+                    if (Math.abs(xInScreen - xDownInScreen) <= error
+                            && Math.abs(yInScreen - yDownInScreen) <= error) {
+                        doClick();
+                    }
+                }
+
+                return true;
             }
         });
     }
@@ -138,9 +194,8 @@ public class FloatWindowSimpleService extends Service {
             alertDialog.setCallback(new G_AlertDialog.YesOrNoDialogCallback() {
                 @Override
                 public void onClickButton(G_AlertDialog.ClickedButton button, String message) {
-                    if (button== G_AlertDialog.ClickedButton.POSITIVE)
-                    {
-                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN",true);
+                    if (button == G_AlertDialog.ClickedButton.POSITIVE) {
+                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", true);
                         lock_btn.setText("UNLOCK");
                         flag = flagType.Locked;
 
@@ -157,9 +212,8 @@ public class FloatWindowSimpleService extends Service {
             alertDialog.setCallback(new G_AlertDialog.YesOrNoDialogCallback() {
                 @Override
                 public void onClickButton(G_AlertDialog.ClickedButton button, String message) {
-                    if (button== G_AlertDialog.ClickedButton.POSITIVE)
-                    {
-                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN",false);
+                    if (button == G_AlertDialog.ClickedButton.POSITIVE) {
+                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", false);
                         lock_btn.setText("LOCK");
                         flag = flagType.UnLocked;
 
