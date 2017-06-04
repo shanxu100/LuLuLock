@@ -67,14 +67,6 @@ public class MQTTService extends Service {
          */
 
         Log.e(TAG, "Start MQTT Service");
-        /**
-         *
-         * 开启定时器，每隔0.5秒刷新一次：创建并循环显示悬浮窗
-         */
-        if (timer == null) {
-            timer = new Timer();
-            //timer.scheduleAtFixedRate(new ConnectTask(), 0, 3000);
-        }
 
         MQTTManager.getInstance().startMQTT();
 
@@ -97,16 +89,6 @@ public class MQTTService extends Service {
      */
     public static void sendMessage(String topic, String json) {
         MQTTManager.getInstance().sendMessage(topic, json);
-    }
-
-    public class ConnectTask extends TimerTask {
-
-        @Override
-        public void run() {
-            if (MQTTManager.getCurrentState() == MQTTManager.MQTTState.STOPPED) {
-                MQTTManager.getInstance().startMQTT();
-            }
-        }
     }
 
 
@@ -162,7 +144,7 @@ public class MQTTService extends Service {
         /**
          * 当前状态的描述
          */
-        private static MQTTState currentState = MQTTState.STOPPED;
+        private MQTTState currentState = MQTTState.STOPPED;
 
         private String TAG = "MqttManager";
 
@@ -218,7 +200,7 @@ public class MQTTService extends Service {
          */
         private void startMQTT() {
             //检查状态
-            if (currentState == MQTTState.RUNNING) {
+            if (currentState != MQTTState.STOPPED) {
                 ShowUtil.LogAndToast("MQTT Service is running. Do not start again.");
                 return;
             }
@@ -365,15 +347,6 @@ public class MQTTService extends Service {
             });
 
 
-        }
-
-        /**
-         * 获取当前连接信息
-         *
-         * @return
-         */
-        private static MQTTState getCurrentState() {
-            return currentState;
         }
 
 

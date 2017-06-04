@@ -51,7 +51,7 @@
                 android:layout_marginTop="15dp"
                 android:layout_weight="1"
                 android:background="@null"
-                android:text="确定"
+                android:text="锁屏"
                 android:textColor="@color/black"
                 android:textSize="25sp" />
 
@@ -68,7 +68,7 @@
                 android:layout_marginTop="15dp"
                 android:layout_weight="1"
                 android:background="@null"
-                android:text="取消"
+                android:text="解锁"
                 android:textColor="@color/black"
                 android:textSize="25sp" />
         </LinearLayout>

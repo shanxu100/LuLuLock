@@ -15,11 +15,14 @@ import android.widget.RelativeLayout;
 
 import com.luluteam.lululock.R;
 import com.luluteam.lululock.app.App;
+import com.luluteam.lululock.service.LockScreenService;
 import com.luluteam.lululock.utils.DisplayUtil;
 import com.luluteam.lululock.utils.mqtt.MessageSender;
 import com.luluteam.lululock.view.G_AlertDialog;
 
 import java.lang.reflect.Field;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 /**
@@ -28,9 +31,9 @@ import java.lang.reflect.Field;
 public class FloatWindowSimpleService extends Service {
 
     private RelativeLayout simple_rl_view;//View的子类
-    //private LinearLayout parent_ll;
+
     private Button lock_btn;
-    //private Button unlock_btn;
+
     private WindowManager windowManager;
 
     /**
@@ -72,10 +75,10 @@ public class FloatWindowSimpleService extends Service {
      */
     private float error = 10;
 
+    private Timer timer;
+    private boolean isTimerRunning = false;
 
     private enum flagType {Locked, UnLocked}
-
-    ;
 
     private flagType flag = flagType.UnLocked;
 
@@ -101,6 +104,9 @@ public class FloatWindowSimpleService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         createFloatView();
+        if (!isTimerRunning) {
+            startProtect();
+        }
 
         return START_STICKY;
     }
@@ -111,6 +117,12 @@ public class FloatWindowSimpleService extends Service {
         windowManager.removeView(simple_rl_view);
         simple_rl_view = null;
 
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+        isTimerRunning = false;
+
         super.onDestroy();
     }
 
@@ -120,15 +132,18 @@ public class FloatWindowSimpleService extends Service {
             return;
         }
 
-        final WindowManager.LayoutParams params = new WindowManager.LayoutParams
-                (WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.RGBA_8888);
+        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.RGBA_8888);
         params.x = 0;
         params.y = DisplayUtil.getScreenHeight() / 2;
         params.gravity = Gravity.LEFT | Gravity.TOP;
         params.width = WindowManager.LayoutParams.WRAP_CONTENT;
         params.height = WindowManager.LayoutParams.WRAP_CONTENT;
 
-        simple_rl_view = (RelativeLayout) LayoutInflater.from(getApplicationContext()).inflate(R.layout.view_floatwindow_small, null);
+        simple_rl_view = (RelativeLayout) LayoutInflater.from(getApplicationContext()).
+                inflate(R.layout.view_floatwindow_small, null);
         lock_btn = (Button) simple_rl_view.findViewById(R.id.lock_screen_btn);
         windowManager.addView(simple_rl_view, params);
 
@@ -185,46 +200,29 @@ public class FloatWindowSimpleService extends Service {
         return simple_rl_view != null;
     }
 
-
     private void doClick() {
-        if (flag == flagType.UnLocked) {
-            //执行锁屏操作
-            final G_AlertDialog alertDialog = new G_AlertDialog(App.getAppContext());
-            alertDialog.setMeesage("您确定要锁屏吗？");
-            alertDialog.setCallback(new G_AlertDialog.YesOrNoDialogCallback() {
-                @Override
-                public void onClickButton(G_AlertDialog.ClickedButton button, String message) {
-                    if (button == G_AlertDialog.ClickedButton.POSITIVE) {
-                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", true);
-                        lock_btn.setText("UNLOCK");
-                        flag = flagType.Locked;
 
-                    }
-                    alertDialog.dismiss();
+        final G_AlertDialog alertDialog = new G_AlertDialog(App.getAppContext());
+        alertDialog.setMeesage("请选择您的操作");
+        alertDialog.setCallback(new G_AlertDialog.YesOrNoDialogCallback() {
+            @Override
+            public void onClickButton(G_AlertDialog.ClickedButton button, String message) {
+                if (button == G_AlertDialog.ClickedButton.POSITIVE && flag == flagType.UnLocked) {
+                    //执行锁屏操作
+                    MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", true);
+                    lock_btn.setText("UNLOCK");
+                    flag = flagType.Locked;
+                } else if (button == G_AlertDialog.ClickedButton.NEGATIVE && flag == flagType.Locked) {
+                    //执行解锁操作
+                    MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", false);
+                    lock_btn.setText("LOCK");
+                    flag = flagType.UnLocked;
                 }
-            });
-            alertDialog.show();
+                alertDialog.dismiss();
+            }
+        });
+        alertDialog.show();
 
-        } else if (flag == flagType.Locked) {
-            //执行解锁操作
-            final G_AlertDialog alertDialog = new G_AlertDialog(App.getAppContext());
-            alertDialog.setMeesage("您确定解锁吗？");
-            alertDialog.setCallback(new G_AlertDialog.YesOrNoDialogCallback() {
-                @Override
-                public void onClickButton(G_AlertDialog.ClickedButton button, String message) {
-                    if (button == G_AlertDialog.ClickedButton.POSITIVE) {
-                        MessageSender.sendActionLockScreen("TOPIC_LOCK_SCREEN", false);
-                        lock_btn.setText("LOCK");
-                        flag = flagType.UnLocked;
-
-                    }
-                    alertDialog.dismiss();
-                }
-            });
-            alertDialog.show();
-
-
-        }
     }
 
     /**
@@ -245,6 +243,23 @@ public class FloatWindowSimpleService extends Service {
             }
         }
         return statusBarHeight;
+    }
+
+
+    private void startProtect() {
+        if (timer == null) {
+            timer = new Timer();
+        }
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!App.isServiceWorked(LockScreenService.class.getName())) {
+                    Intent intent = new Intent(FloatWindowSimpleService.this, LockScreenService.class);
+                    startService(intent);
+                }
+            }
+        }, 10000, 3000);
+        isTimerRunning=true;
     }
 
 }

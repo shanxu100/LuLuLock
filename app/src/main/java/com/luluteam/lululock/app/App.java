@@ -1,5 +1,6 @@
 package com.luluteam.lululock.app;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.content.Intent;
 import com.luluteam.lululock.utils.DisplayUtil;
 import com.luluteam.lululock.utils.mqtt.MQTTService;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 /**
@@ -45,6 +47,22 @@ public class App extends Application {
 
     public static Context getAppContext() {
         return appContext;
+    }
+
+    /**
+     * 判断Service是否在运行
+     * @param serviceName
+     * @return
+     */
+    public static boolean isServiceWorked( String serviceName) {
+        ActivityManager myManager = (ActivityManager) appContext.getSystemService(Context.ACTIVITY_SERVICE);
+        ArrayList<ActivityManager.RunningServiceInfo> runningService = (ArrayList<ActivityManager.RunningServiceInfo>) myManager.getRunningServices(Integer.MAX_VALUE);
+        for (int i = 0; i < runningService.size(); i++) {
+            if (runningService.get(i).service.getClassName().toString().equals(serviceName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
